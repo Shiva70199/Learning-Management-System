@@ -1,0 +1,50 @@
+# Full stack on one server: MySQL + API. Frontend stays on Vercel (recommended) or build separately.
+# Usage:
+#   cp env.docker.example .env.docker
+#   # edit .env.docker — set JWT secrets (32+ chars each)
+#   docker compose --env-file .env.docker up -d --build
+#
+# API: http://localhost:4000  |  Health: GET /api/health
+# Point NEXT_PUBLIC_API_BASE_URL at this host (use HTTPS + domain in production).
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: lms
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - lms_mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 25s
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-4000}:4000"
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/lms
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      CLIENT_ORIGIN: ${CLIENT_ORIGIN}
+      COOKIE_CROSS_SITE: ${COOKIE_CROSS_SITE:-false}
+      HUGGINGFACE_API_KEY: ${HUGGINGFACE_API_KEY:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  lms_mysql_data:

@@ -19,6 +19,15 @@ export function getRefreshCookieOptions(): {
   path: string;
 } {
   const maxAge = env.REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000;
+  if (env.cookieCrossSite) {
+    return {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge,
+      path: "/",
+    };
+  }
   return {
     httpOnly: true,
     secure: env.NODE_ENV === "production",

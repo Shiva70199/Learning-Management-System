@@ -22,6 +22,15 @@ const envSchema = z.object({
     )
     .pipe(z.array(z.string().url()).min(1)),
   HUGGINGFACE_API_KEY: z.string().optional().default(""),
+  /**
+   * Set to "true" when the browser app and API are on different sites (e.g. Vercel + Railway).
+   * Uses SameSite=None + Secure so the refresh cookie is sent on cross-origin requests.
+   */
+  COOKIE_CROSS_SITE: z
+    .string()
+    .optional()
+    .default("false")
+    .transform((v) => v === "true" || v === "1"),
 });
 
 const parsed = envSchema.parse(process.env);
@@ -30,4 +39,5 @@ export const env = {
   ...parsed,
   /** Allowed browser origins for CORS (credentials). */
   clientOrigins: parsed.CLIENT_ORIGIN,
+  cookieCrossSite: parsed.COOKIE_CROSS_SITE,
 };
